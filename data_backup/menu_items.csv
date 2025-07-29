@@ -1,0 +1,11 @@
+id,name,category,price,ingredients,mood_tags
+1,Nasi Goreng,Main Course,25000,"['nasi', 'telur', 'ayam', 'sayuran']","['comfort', 'traditional']"
+2,Mie Goreng,Main Course,22000,"['mie', 'telur', 'ayam', 'sayuran']","['comfort', 'quick']"
+3,Ayam Goreng,Main Course,30000,"['ayam', 'tepung', 'minyak']","['crispy', 'protein']"
+4,Sate Ayam,Main Course,28000,"['ayam', 'kacang', 'kecap']","['grilled', 'traditional']"
+5,Gado-gado,Appetizer,18000,"['sayuran', 'kacang', 'telur']","['healthy', 'fresh']"
+6,Soto Ayam,Soup,20000,"['ayam', 'kuah', 'sayuran']","['warm', 'comfort']"
+7,Es Teh Manis,Beverage,5000,"['teh', 'gula', 'es']","['refreshing', 'sweet']"
+8,Es Jeruk,Beverage,8000,"['jeruk', 'gula', 'es']","['refreshing', 'vitamin']"
+9,Pisang Goreng,Dessert,12000,"['pisang', 'tepung', 'minyak']","['sweet', 'crispy']"
+10,Es Campur,Dessert,15000,"['santan', 'gula', 'es', 'buah']","['sweet', 'refreshing']"
