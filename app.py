@@ -1,21 +1,46 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 from datetime import datetime, timedelta
 import os
 import sys
 
+# Try to import optional dependencies
+try:
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    HAS_MATPLOTLIB = True
+except ImportError:
+    HAS_MATPLOTLIB = False
+    st.warning("⚠️ Matplotlib/Seaborn tidak tersedia. Beberapa visualisasi mungkin tidak tersedia.")
+
 # Add current directory to path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# Import our modules
-from utils.data_generator import DataGenerator
-from utils.helpers import (
-    load_data, get_low_stock_alerts, calculate_metrics, format_currency,
-    get_mood_based_recommendations, get_ingredient_based_recommendations
-)
+# Try to import our modules with fallback
+try:
+    from utils.data_generator import DataGenerator
+    from utils.helpers import (
+        load_data, get_low_stock_alerts, calculate_metrics, format_currency,
+        get_mood_based_recommendations, get_ingredient_based_recommendations
+    )
+    HAS_UTILS = True
+except ImportError as e:
+    HAS_UTILS = False
+    st.error(f"⚠️ Error loading utils: {e}")
+    # Create fallback functions
+    def load_data():
+        return None, None, None, None
+    def get_low_stock_alerts(df):
+        return pd.DataFrame()
+    def calculate_metrics(orders_df, inventory_df):
+        return {}
+    def format_currency(amount):
+        return f"Rp {amount:,}"
+    def get_mood_based_recommendations(menu_df, mood):
+        return menu_df.head(5)
+    def get_ingredient_based_recommendations(menu_df, ingredient):
+        return menu_df.head(5)
 
 # Page configuration
 st.set_page_config(
@@ -58,20 +83,98 @@ st.markdown("""
 @st.cache_data(ttl=60)  # Cache expires after 60 seconds
 def load_and_prepare_data():
     """Load and prepare data with caching"""
-    # Check if data files exist, if not generate them
-    if not os.path.exists('data/sample_orders.csv'):
-        st.info("Generating sample data for the first time...")
-        generator = DataGenerator()
-        generator.save_sample_data()
+    try:
+        # Check if data files exist, if not generate them
+        if not os.path.exists('data/sample_orders.csv'):
+            st.info("Generating sample data for the first time...")
+            if HAS_UTILS:
+                generator = DataGenerator()
+                generator.save_sample_data()
+            else:
+                # Create simple sample data if utils not available
+                create_simple_sample_data()
+        
+        # Load data
+        if HAS_UTILS:
+            orders_df, menu_df, inventory_df, preferences_df = load_data()
+        else:
+            orders_df, menu_df, inventory_df, preferences_df = load_simple_data()
+        
+        if orders_df is None:
+            st.error("Error loading data. Using fallback data...")
+            return create_fallback_data()
+        
+        return orders_df, menu_df, inventory_df, preferences_df
+    except Exception as e:
+        st.error(f"Error in data loading: {e}")
+        return create_fallback_data()
+
+def create_simple_sample_data():
+    """Create simple sample data files"""
+    # Create data directory
+    os.makedirs('data', exist_ok=True)
     
-    # Load data
-    orders_df, menu_df, inventory_df, preferences_df = load_data()
+    # Simple menu data
+    menu_data = {
+        'id': [1, 2, 3, 4, 5],
+        'name': ['Nasi Goreng', 'Mie Goreng', 'Ayam Goreng', 'Sate Ayam', 'Gado-gado'],
+        'category': ['Main Course', 'Main Course', 'Main Course', 'Main Course', 'Appetizer'],
+        'price': [25000, 22000, 30000, 28000, 18000]
+    }
+    pd.DataFrame(menu_data).to_csv('data/menu_items.csv', index=False)
     
-    if orders_df is None:
-        st.error("Error loading data. Please check if data files exist.")
+    # Simple orders data
+    orders_data = {
+        'order_id': range(1, 101),
+        'menu_id': np.random.randint(1, 6, 100),
+        'quantity': np.random.randint(1, 4, 100),
+        'order_date': pd.date_range(start='2024-01-01', periods=100, freq='D'),
+        'total_price': np.random.randint(15000, 50000, 100)
+    }
+    pd.DataFrame(orders_data).to_csv('data/sample_orders.csv', index=False)
+    
+    # Simple inventory data
+    inventory_data = {
+        'ingredient_name': ['Nasi', 'Mie', 'Ayam', 'Telur', 'Sayuran'],
+        'current_stock': [50, 30, 40, 100, 20],
+        'reorder_point': [10, 5, 8, 20, 5],
+        'status': ['Normal', 'Normal', 'Normal', 'Normal', 'Low Stock']
+    }
+    pd.DataFrame(inventory_data).to_csv('data/inventory.csv', index=False)
+
+def load_simple_data():
+    """Load simple data files"""
+    try:
+        orders_df = pd.read_csv('data/sample_orders.csv')
+        menu_df = pd.read_csv('data/menu_items.csv')
+        inventory_df = pd.read_csv('data/inventory.csv')
+        preferences_df = pd.DataFrame()  # Empty preferences for simple version
+        return orders_df, menu_df, inventory_df, preferences_df
+    except:
         return None, None, None, None
-    
-    return orders_df, menu_df, inventory_df, preferences_df
+
+def create_fallback_data():
+    """Create fallback data if everything fails"""
+    menu_data = {
+        'id': [1, 2, 3],
+        'name': ['Nasi Goreng', 'Mie Goreng', 'Ayam Goreng'],
+        'category': ['Main Course', 'Main Course', 'Main Course'],
+        'price': [25000, 22000, 30000]
+    }
+    orders_data = {
+        'order_id': [1, 2, 3],
+        'menu_id': [1, 2, 3],
+        'quantity': [1, 2, 1],
+        'order_date': pd.date_range(start='2024-01-01', periods=3),
+        'total_price': [25000, 44000, 30000]
+    }
+    inventory_data = {
+        'ingredient_name': ['Nasi', 'Mie', 'Ayam'],
+        'current_stock': [50, 30, 40],
+        'reorder_point': [10, 5, 8],
+        'status': ['Normal', 'Normal', 'Normal']
+    }
+    return pd.DataFrame(orders_data), pd.DataFrame(menu_data), pd.DataFrame(inventory_data), pd.DataFrame()
 
 def main():
     # Header
@@ -143,21 +246,30 @@ def show_dashboard(orders_df, menu_df, inventory_df):
     st.subheader("📈 Analisis Data")
     
     try:
-        charts = create_simple_charts(orders_df, menu_df, inventory_df)
-        
-        # Display charts
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.pyplot(charts['trends'])
-        
-        with col2:
-            st.pyplot(charts['popularity'])
-        
-        st.pyplot(charts['inventory'])
+        if HAS_MATPLOTLIB:
+            charts = create_simple_charts(orders_df, menu_df, inventory_df)
+            
+            # Display charts
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.pyplot(charts['trends'])
+            
+            with col2:
+                st.pyplot(charts['popularity'])
+            
+            st.pyplot(charts['inventory'])
+        else:
+            # Use Streamlit native charts
+            create_streamlit_charts(orders_df, menu_df, inventory_df)
         
     except Exception as e:
         st.error(f"Error creating charts: {e}")
+        # Fallback to simple display
+        st.write("📊 Data Overview:")
+        st.write(f"Total Orders: {len(orders_df)}")
+        st.write(f"Total Revenue: {format_currency(orders_df['total_price'].sum())}")
+        st.write(f"Menu Items: {len(menu_df)}")
     
     # Inventory alerts
     st.subheader("🚨 Alert Inventaris")
@@ -181,7 +293,62 @@ def show_dashboard(orders_df, menu_df, inventory_df):
     st.dataframe(recent_orders, use_container_width=True)
 
 def create_simple_charts(orders_df, menu_df, inventory_df):
-    """Create simple charts using matplotlib"""
+    """Create simple charts using matplotlib or fallback to Streamlit charts"""
+    charts = {}
+    
+    if HAS_MATPLOTLIB:
+        try:
+            # Daily orders trend
+            daily_orders = orders_df.groupby('order_date').agg({
+                'quantity': 'sum',
+                'total_price': 'sum'
+            }).reset_index()
+            
+            fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8))
+            
+            # Quantity trend
+            ax1.plot(daily_orders['order_date'], daily_orders['quantity'])
+            ax1.set_title('Daily Order Quantity Trend')
+            ax1.set_ylabel('Quantity')
+            ax1.tick_params(axis='x', rotation=45)
+            
+            # Revenue trend
+            ax2.plot(daily_orders['order_date'], daily_orders['total_price'])
+            ax2.set_title('Daily Revenue Trend')
+            ax2.set_ylabel('Revenue (IDR)')
+            ax2.tick_params(axis='x', rotation=45)
+            
+            plt.tight_layout()
+            charts['trends'] = fig
+            
+            # Menu popularity
+            menu_popularity = orders_df.groupby('menu_name')['quantity'].sum().sort_values(ascending=False).head(10)
+            
+            fig, ax = plt.subplots(figsize=(10, 6))
+            menu_popularity.plot(kind='bar', ax=ax)
+            ax.set_title('Top 10 Most Popular Menu Items')
+            ax.set_ylabel('Total Quantity Sold')
+            ax.tick_params(axis='x', rotation=45)
+            plt.tight_layout()
+            charts['popularity'] = fig
+            
+            # Inventory status
+            status_counts = inventory_df['status'].value_counts()
+            
+            fig, ax = plt.subplots(figsize=(8, 6))
+            ax.pie(status_counts.values, labels=status_counts.index, autopct='%1.1f%%')
+            ax.set_title('Inventory Status Distribution')
+            charts['inventory'] = fig
+            
+            return charts
+        except Exception as e:
+            st.warning(f"Error creating matplotlib charts: {e}")
+            return create_streamlit_charts(orders_df, menu_df, inventory_df)
+    else:
+        return create_streamlit_charts(orders_df, menu_df, inventory_df)
+
+def create_streamlit_charts(orders_df, menu_df, inventory_df):
+    """Create charts using Streamlit native charts"""
     charts = {}
     
     # Daily orders trend
@@ -190,41 +357,21 @@ def create_simple_charts(orders_df, menu_df, inventory_df):
         'total_price': 'sum'
     }).reset_index()
     
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8))
-    
-    # Quantity trend
-    ax1.plot(daily_orders['order_date'], daily_orders['quantity'])
-    ax1.set_title('Daily Order Quantity Trend')
-    ax1.set_ylabel('Quantity')
-    ax1.tick_params(axis='x', rotation=45)
-    
-    # Revenue trend
-    ax2.plot(daily_orders['order_date'], daily_orders['total_price'])
-    ax2.set_title('Daily Revenue Trend')
-    ax2.set_ylabel('Revenue (IDR)')
-    ax2.tick_params(axis='x', rotation=45)
-    
-    plt.tight_layout()
-    charts['trends'] = fig
+    # Use Streamlit line chart
+    st.subheader("📈 Tren Pesanan Harian")
+    st.line_chart(daily_orders.set_index('order_date'))
     
     # Menu popularity
     menu_popularity = orders_df.groupby('menu_name')['quantity'].sum().sort_values(ascending=False).head(10)
     
-    fig, ax = plt.subplots(figsize=(10, 6))
-    menu_popularity.plot(kind='bar', ax=ax)
-    ax.set_title('Top 10 Most Popular Menu Items')
-    ax.set_ylabel('Total Quantity Sold')
-    ax.tick_params(axis='x', rotation=45)
-    plt.tight_layout()
-    charts['popularity'] = fig
+    st.subheader("🍽️ Menu Terpopuler")
+    st.bar_chart(menu_popularity)
     
     # Inventory status
     status_counts = inventory_df['status'].value_counts()
     
-    fig, ax = plt.subplots(figsize=(8, 6))
-    ax.pie(status_counts.values, labels=status_counts.index, autopct='%1.1f%%')
-    ax.set_title('Inventory Status Distribution')
-    charts['inventory'] = fig
+    st.subheader("📦 Status Inventaris")
+    st.write(status_counts)
     
     return charts
 

@@ -193,12 +193,18 @@ python utils/data_generator.py
    - Klik "Deploy"
 
 3. **Konfigurasi Deploy**
-   - **Main file path**: `app_simple.py` (untuk versi sederhana)
+   - **Main file path**: `app.py`
    - **Requirements file**: `requirements.txt`
 
 ### **Versi Aplikasi:**
-- **`app.py`** - Versi lengkap dengan semua fitur (untuk local)
-- **`app_simple.py`** - Versi sederhana untuk deploy (tanpa matplotlib/seaborn)
+- **`app.py`** - Versi lengkap dengan fallback (bisa deploy ke Streamlit Cloud)
+
+### **Fitur `app.py` yang Diperbaiki:**
+- ✅ **Error Handling** - Fallback jika dependencies tidak tersedia
+- ✅ **Flexible Charts** - Matplotlib jika tersedia, Streamlit native jika tidak
+- ✅ **Data Generation** - Otomatis generate data jika file tidak ada
+- ✅ **Import Safety** - Try-catch untuk semua import
+- ✅ **Graceful Degradation** - Tetap berfungsi meski ada error
 
 ### **File Konfigurasi yang Sudah Disiapkan:**
 - ✅ `requirements.txt` - Dependencies yang fleksibel
