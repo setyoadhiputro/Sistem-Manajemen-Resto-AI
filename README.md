@@ -193,8 +193,12 @@ python utils/data_generator.py
    - Klik "Deploy"
 
 3. **Konfigurasi Deploy**
-   - **Main file path**: `app.py`
+   - **Main file path**: `app_simple.py` (untuk versi sederhana)
    - **Requirements file**: `requirements.txt`
+
+### **Versi Aplikasi:**
+- **`app.py`** - Versi lengkap dengan semua fitur (untuk local)
+- **`app_simple.py`** - Versi sederhana untuk deploy (tanpa matplotlib/seaborn)
 
 ### **File Konfigurasi yang Sudah Disiapkan:**
 - ✅ `requirements.txt` - Dependencies yang fleksibel
